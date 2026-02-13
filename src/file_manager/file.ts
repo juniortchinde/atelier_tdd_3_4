@@ -1,63 +1,22 @@
-import * as fs from 'fs';
 import * as path from 'path';
-
-const adjectives = [
-    "happy",
-    "silly",
-    "bumpy",
-    "grumpy",
-    "fluffy",
-    "scary",
-    "tiny",
-    "giant",
-    "red",
-    "blue",
-    "green",
-    "yellow",
-    "purple",
-    "orange",
-    "black",
-    "white",
-    "brown",
-    "pink",
-    "gray",
-    "silver",
-];
-
-const nouns = [
-    "cat",
-    "dog",
-    "house",
-    "car",
-    "tree",
-    "flower",
-    "book",
-    "computer",
-    "phone",
-    "table",
-    "chair",
-    "sun",
-    "moon",
-    "star",
-    "cloud",
-    "water",
-    "fire",
-    "earth",
-    "air",
-    "love",
-];
+import { IFileSystem } from './fs.interface';
+import { IRandomNameGenerator } from './random-name-generator.interface';
 
 export class FileManager {
     private selectedEntries: string[] = [];
 
-    constructor(private directoryPath: string) {
-        if (!fs.existsSync(directoryPath)) {
+    constructor(
+        private directoryPath: string,
+        private fs: IFileSystem,
+        private randomNameGenerator: IRandomNameGenerator
+    ) {
+        if (!this.fs.existsSync(directoryPath)) {
             throw new Error(`Directory not found: ${directoryPath}`);
         }
     }
 
     listEntries(): string[] {
-        return fs.readdirSync(this.directoryPath);
+        return this.fs.readdirSync(this.directoryPath);
     }
 
     selectEntries(entries: string[] | 'all') {
@@ -69,45 +28,39 @@ export class FileManager {
     }
 
     copy(destination?: string) {
-        const dest = destination || this.generateRandomDirectoryName();
+        const dest = destination || this.randomNameGenerator.generate();
         const destPath = path.join(this.directoryPath, dest);
-        if (!fs.existsSync(destPath)) {
-            fs.mkdirSync(destPath, { recursive: true });
+        if (!this.fs.existsSync(destPath)) {
+            this.fs.mkdirSync(destPath, { recursive: true });
         }
         this.selectedEntries.forEach(entry => {
             const sourcePath = path.join(this.directoryPath, entry);
             const targetPath = path.join(destPath, entry);
-            fs.copyFileSync(sourcePath, targetPath);
+            this.fs.copyFileSync(sourcePath, targetPath);
         });
     }
 
     move(destination?: string) {
-        const dest = destination || this.generateRandomDirectoryName();
+        const dest = destination || this.randomNameGenerator.generate();
         const destPath = path.join(this.directoryPath, dest);
-        if (!fs.existsSync(destPath)) {
-            fs.mkdirSync(destPath, { recursive: true });
+        if (!this.fs.existsSync(destPath)) {
+            this.fs.mkdirSync(destPath, { recursive: true });
         }
         this.selectedEntries.forEach(entry => {
             const sourcePath = path.join(this.directoryPath, entry);
             const targetPath = path.join(destPath, entry);
-            fs.renameSync(sourcePath, targetPath);
+            this.fs.renameSync(sourcePath, targetPath);
         });
     }
 
     delete() {
         this.selectedEntries.forEach(entry => {
             const entryPath = path.join(this.directoryPath, entry);
-            if (fs.lstatSync(entryPath).isDirectory()) {
-                fs.rmSync(entryPath, { recursive: true });
+            if (this.fs.lstatSync(entryPath).isDirectory()) {
+                this.fs.rmSync(entryPath, { recursive: true });
             } else {
-                fs.unlinkSync(entryPath);
+                this.fs.unlinkSync(entryPath);
             }
         });
-    }
-
-    private generateRandomDirectoryName(): string {
-        const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-        const noun = nouns[Math.floor(Math.random() * nouns.length)];
-        return `${adjective}-${noun}`;
     }
 }
