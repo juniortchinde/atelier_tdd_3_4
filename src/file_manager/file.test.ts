@@ -292,7 +292,7 @@ describe('FileManager copy with random name conflict', () => {
                 fileManager = new FileManager(TEST_DIR, mockFs, mockRandomNameGenerator);
             });
         
-            test('devrait retourner une liste de fichiers échoués pendant la copie et les garder sélectionnés', () => {
+            it('devrait retourner une liste de fichiers échoués pendant la copie et les garder sélectionnés', () => {
                 const error = new Error('Disk is full');
                 mockFs.failOn[`${TEST_DIR}/${FILE_TO_FAIL}`] = error;
         

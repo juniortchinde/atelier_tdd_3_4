@@ -27,17 +27,29 @@ export class FileManager {
         }
     }
 
-    copy(destination?: string) {
+    copy(destination?: string): { file: string, error: Error }[] {
         const dest = destination || this._findUniqueDirectoryName();
         const destPath = path.join(this.directoryPath, dest);
         if (!this.fs.existsSync(destPath)) {
             this.fs.mkdirSync(destPath, { recursive: true });
         }
+        const failedFiles: { file: string, error: Error }[] = [];
+        const successfullyCopied: string[] = [];
+
         this.selectedEntries.forEach(entry => {
             const sourcePath = path.join(this.directoryPath, entry);
             const targetPath = path.join(destPath, entry);
-            this.fs.copyFileSync(sourcePath, targetPath);
+            try {
+                this.fs.copyFileSync(sourcePath, targetPath);
+                successfullyCopied.push(entry);
+            } catch (error) {
+                failedFiles.push({ file: entry, error: error as Error });
+            }
         });
+        
+        this.selectedEntries = this.selectedEntries.filter(entry => !successfullyCopied.includes(entry));
+
+        return failedFiles;
     }
 
     move(destination?: string) {
