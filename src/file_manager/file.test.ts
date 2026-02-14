@@ -174,3 +174,94 @@ describe('FileManager', () => {
         expect(() => new FileManager('/non_existent_dir', mockFs, mockRandomNameGenerator)).toThrow('Directory not found: /non_existent_dir');
     });
 });
+
+// Ajout des nouveaux tests pour la gestion des conflits de noms de répertoire lors de la copie
+describe('FileManager copy with random name conflict', () => {
+    const TEST_DIR = '/test_dir';
+    let fileManager: FileManager;
+    let fsMock: IFileSystem;
+    let nameGeneratorMock: IRandomNameGenerator;
+
+    beforeEach(() => {
+        // Mock complet pour l'interface IFileSystem avec jest.fn()
+        fsMock = {
+            readdirSync: jest.fn().mockReturnValue([]),
+            copyFileSync: jest.fn(),
+            renameSync: jest.fn(),
+            unlinkSync: jest.fn(),
+            rmSync: jest.fn(),
+            lstatSync: jest.fn().mockReturnValue({ isDirectory: () => false } as Stats),
+            existsSync: jest.fn().mockReturnValue(true), // Le répertoire de base existe toujours
+            mkdirSync: jest.fn(),
+        };
+
+        // Mock pour le générateur de noms
+        nameGeneratorMock = {
+            generate: jest.fn(),
+        };
+
+        fileManager = new FileManager(TEST_DIR, fsMock, nameGeneratorMock);
+        fileManager.selectEntries(['file1.txt']); // Sélectionner un fichier pour que la copie s'exécute
+    });
+
+    // Test 1: Le générateur de nom produit un nom qui existe déjà une fois,
+    // puis un nom valide. Le système doit réessayer et utiliser le deuxième nom.
+    it('should retry with a new name if the first random name exists', () => {
+        const existingName = 'existing-name';
+        const newName = 'new-name';
+        (nameGeneratorMock.generate as jest.Mock).mockReturnValueOnce(existingName).mockReturnValueOnce(newName);
+
+        // Simule l'existence du premier répertoire mais pas du second
+        (fsMock.existsSync as jest.Mock).mockImplementation((p: string) => {
+            if (p === TEST_DIR) return true; // le répertoire de base
+            return p.endsWith(existingName);
+        });
+
+        fileManager.copy(); // Appel sans destination pour déclencher la logique de nom aléatoire
+
+        // Vérifie que le générateur a été appelé 2 fois
+        expect(nameGeneratorMock.generate).toHaveBeenCalledTimes(2);
+        // Vérifie que la création de répertoire a été faite avec le nom non conflictuel
+        expect(fsMock.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(newName), expect.anything());
+    });
+
+    // Test 2: Le générateur produit le même nom conflictuel 10 fois.
+    // Le système doit alors commencer à numéroter le nom jusqu'à en trouver un qui n'existe pas.
+    // Ici, 'conflict' et 'conflict-1' existent, mais 'conflict-2' est libre.
+    it('should append a number to the name after 10 failed attempts', () => {
+        const conflictingName = 'conflict';
+        (nameGeneratorMock.generate as jest.Mock).mockReturnValue(conflictingName);
+
+        (fsMock.existsSync as jest.Mock).mockImplementation((p: string) => {
+            if (p === TEST_DIR) return true;
+            // 'conflict' et 'conflict-1' existent
+            return p.endsWith(conflictingName) || p.endsWith(`${conflictingName}-1`);
+        });
+
+        fileManager.copy();
+
+        // Le générateur est appelé 10 fois pour le nom de base
+        expect(nameGeneratorMock.generate).toHaveBeenCalledTimes(10);
+        // mkdirSync doit être appelé avec le premier nom numéroté disponible, soit 'conflict-2'
+        expect(fsMock.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(`${conflictingName}-2`), expect.anything());
+    });
+
+    // Test 3: Cas limite où le premier nom numéroté ('conflict-1') est disponible.
+    it('should use the first available numbered name after 10 attempts', () => {
+        const conflictingName = 'conflict';
+        (nameGeneratorMock.generate as jest.Mock).mockReturnValue(conflictingName);
+
+        (fsMock.existsSync as jest.Mock).mockImplementation((p: string) => {
+            if (p === TEST_DIR) return true;
+            // Seul le nom de base 'conflict' existe
+            return p.endsWith(conflictingName);
+        });
+
+        fileManager.copy();
+
+        // Le générateur est appelé 10 fois
+        expect(nameGeneratorMock.generate).toHaveBeenCalledTimes(10);
+        // mkdirSync doit être appelé avec le premier nom numéroté disponible, soit 'conflict-1'
+        expect(fsMock.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(`${conflictingName}-1`), expect.anything());
+    });
+});
