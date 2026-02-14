@@ -6,6 +6,7 @@ import { Stats } from 'fs';
 class MockFileSystem implements IFileSystem {
     public files: { [key: string]: string[] } = {};
     public content: { [key: string]: string } = {};
+    public failOn: { [key: string]: Error } = {};
 
     constructor(initialFiles: { [key: string]: string[] }) {
         this.files = JSON.parse(JSON.stringify(initialFiles));
@@ -16,6 +17,9 @@ class MockFileSystem implements IFileSystem {
     }
 
     copyFileSync(source: string, destination: string): void {
+        if (this.failOn[source]) {
+            throw this.failOn[source];
+        }
         this.content[destination] = this.content[source];
     }
 
@@ -261,7 +265,44 @@ describe('FileManager copy with random name conflict', () => {
 
         // Le générateur est appelé 10 fois
         expect(nameGeneratorMock.generate).toHaveBeenCalledTimes(10);
-        // mkdirSync doit être appelé avec le premier nom numéroté disponible, soit 'conflict-1'
-        expect(fsMock.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(`${conflictingName}-1`), expect.anything());
-    });
-});
+                // mkdirSync doit être appelé avec le premier nom numéroté disponible, soit 'conflict-1'
+                expect(fsMock.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(`${conflictingName}-1`), expect.anything());
+            });
+        });
+        
+        describe('FileManager error handling', () => {
+            const TEST_DIR = '/test_dir';
+            const FILE1 = 'file1.txt';
+            const FILE2 = 'file2.txt';
+            const FILE_TO_FAIL = 'file_to_fail.txt';
+        
+            let fileManager: FileManager;
+            let mockFs: MockFileSystem;
+            let mockRandomNameGenerator: MockRandomNameGenerator;
+        
+            beforeEach(() => {
+                const initialFiles = {
+                    [TEST_DIR]: [FILE1, FILE2, FILE_TO_FAIL],
+                };
+                mockFs = new MockFileSystem(initialFiles);
+                mockFs.content[`${TEST_DIR}/${FILE1}`] = 'file1 content';
+                mockFs.content[`${TEST_DIR}/${FILE2}`] = 'file2 content';
+                mockFs.content[`${TEST_DIR}/${FILE_TO_FAIL}`] = 'file_to_fail content';
+                mockRandomNameGenerator = new MockRandomNameGenerator('random-name');
+                fileManager = new FileManager(TEST_DIR, mockFs, mockRandomNameGenerator);
+            });
+        
+            test('devrait retourner une liste de fichiers échoués pendant la copie et les garder sélectionnés', () => {
+                const error = new Error('Disk is full');
+                mockFs.failOn[`${TEST_DIR}/${FILE_TO_FAIL}`] = error;
+        
+                fileManager.selectEntries([FILE1, FILE_TO_FAIL]);
+                const result = fileManager.copy('destination');
+        
+                expect(result).toEqual([{ file: FILE_TO_FAIL, error: error }]);
+                expect((fileManager as any).selectedEntries).toEqual([FILE_TO_FAIL]);
+                expect(mockFs.content[`${TEST_DIR}/destination/${FILE1}`]).toBe('file1 content');
+                expect(mockFs.content[`${TEST_DIR}/destination/${FILE_TO_FAIL}`]).toBeUndefined();
+            });
+        });
+        
