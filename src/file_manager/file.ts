@@ -28,7 +28,7 @@ export class FileManager {
     }
 
     copy(destination?: string) {
-        const dest = destination || this.randomNameGenerator.generate();
+        const dest = destination || this._findUniqueDirectoryName();
         const destPath = path.join(this.directoryPath, dest);
         if (!this.fs.existsSync(destPath)) {
             this.fs.mkdirSync(destPath, { recursive: true });
@@ -41,7 +41,7 @@ export class FileManager {
     }
 
     move(destination?: string) {
-        const dest = destination || this.randomNameGenerator.generate();
+        const dest = destination || this._findUniqueDirectoryName();
         const destPath = path.join(this.directoryPath, dest);
         if (!this.fs.existsSync(destPath)) {
             this.fs.mkdirSync(destPath, { recursive: true });
@@ -62,5 +62,28 @@ export class FileManager {
                 this.fs.unlinkSync(entryPath);
             }
         });
+    }
+
+    private _findUniqueDirectoryName(): string {
+        let name = this.randomNameGenerator.generate();
+        let attempts = 1;
+        const maxAttempts = 10;
+
+        while (this.fs.existsSync(path.join(this.directoryPath, name)) && attempts < maxAttempts) {
+            name = this.randomNameGenerator.generate();
+            attempts++;
+        }
+
+        if (this.fs.existsSync(path.join(this.directoryPath, name))) {
+            let suffix = 1;
+            let numberedName = `${name}-${suffix}`;
+            while (this.fs.existsSync(path.join(this.directoryPath, numberedName))) {
+                suffix++;
+                numberedName = `${name}-${suffix}`;
+            }
+            name = numberedName;
+        }
+
+        return name;
     }
 }

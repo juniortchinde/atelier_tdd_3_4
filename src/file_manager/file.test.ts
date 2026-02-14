@@ -109,29 +109,29 @@ describe('FileManager', () => {
         fileManager = new FileManager(TEST_DIR, mockFs, mockRandomNameGenerator);
     });
 
-    it('should list entries in the directory', () => {
+    it('devrait lister les entrées dans le répertoire', () => {
         const entries = fileManager.listEntries();
         expect(entries).toEqual([FILE1, FILE2, SUB_DIR]);
     });
 
-    it('should select all entries', () => {
+    it('devrait sélectionner toutes les entrées', () => {
         fileManager.selectEntries('all');
         expect((fileManager as any).selectedEntries).toEqual([FILE1, FILE2, SUB_DIR]);
     });
 
-    it('should select specified entries', () => {
+    it('devrait sélectionner les entrées spécifiées', () => {
         fileManager.selectEntries([FILE1, SUB_DIR]);
         expect((fileManager as any).selectedEntries).toEqual([FILE1, SUB_DIR]);
     });
 
-    it('should copy selected entries to a new directory', () => {
+    it('devrait copier les entrées sélectionnées dans un nouveau répertoire', () => {
         fileManager.selectEntries([FILE1]);
         fileManager.copy('copy_dest');
         expect(mockFs.existsSync(`${TEST_DIR}/copy_dest`)).toBe(true);
         expect(mockFs.content[`${TEST_DIR}/copy_dest/${FILE1}`]).toBe('file1 content');
     });
 
-    it('should move selected entries to a new directory', () => {
+    it('devrait déplacer les entrées sélectionnées vers un nouveau répertoire', () => {
         fileManager.selectEntries([FILE1]);
         fileManager.move('move_dest');
         expect(mockFs.existsSync(`${TEST_DIR}/move_dest`)).toBe(true);
@@ -140,28 +140,28 @@ describe('FileManager', () => {
         expect(mockFs.files[TEST_DIR]).not.toContain(FILE1);
     });
 
-    it('should delete selected files', () => {
+    it('devrait supprimer les fichiers sélectionnés', () => {
         fileManager.selectEntries([FILE1]);
         fileManager.delete();
         expect(mockFs.content[`${TEST_DIR}/${FILE1}`]).toBeUndefined();
         expect(mockFs.files[TEST_DIR]).not.toContain(FILE1);
     });
 
-    it('should delete selected directories', () => {
+    it('devrait supprimer les répertoires sélectionnés', () => {
         fileManager.selectEntries([SUB_DIR]);
         fileManager.delete();
         expect(mockFs.files[`${TEST_DIR}/${SUB_DIR}`]).toBeUndefined();
         expect(mockFs.files[TEST_DIR]).not.toContain(SUB_DIR);
     });
 
-    it('should use random name generator when no destination is provided for copy', () => {
+    it('devrait utiliser le générateur de noms aléatoires si aucune destination n\'est fournie pour la copie', () => {
         fileManager.selectEntries([FILE1]);
         fileManager.copy();
         expect(mockFs.existsSync(`${TEST_DIR}/random-name`)).toBe(true);
         expect(mockFs.content[`${TEST_DIR}/random-name/${FILE1}`]).toBe('file1 content');
     });
 
-    it('should use random name generator when no destination is provided for move', () => {
+    it('devrait utiliser le générateur de noms aléatoires si aucune destination n\'est fournie pour le déplacement', () => {
         fileManager.selectEntries([FILE1]);
         fileManager.move();
         expect(mockFs.existsSync(`${TEST_DIR}/random-name`)).toBe(true);
@@ -170,7 +170,7 @@ describe('FileManager', () => {
         expect(mockFs.files[TEST_DIR]).not.toContain(FILE1);
     });
 
-    it('should throw an error if the directory does not exist', () => {
+    it('devrait lancer une erreur si le répertoire n\'existe pas', () => {
         expect(() => new FileManager('/non_existent_dir', mockFs, mockRandomNameGenerator)).toThrow('Directory not found: /non_existent_dir');
     });
 });
@@ -206,7 +206,7 @@ describe('FileManager copy with random name conflict', () => {
 
     // Test 1: Le générateur de nom produit un nom qui existe déjà une fois,
     // puis un nom valide. Le système doit réessayer et utiliser le deuxième nom.
-    it('should retry with a new name if the first random name exists', () => {
+    it('devrait réessayer avec un nouveau nom si le premier nom aléatoire existe déjà', () => {
         const existingName = 'existing-name';
         const newName = 'new-name';
         (nameGeneratorMock.generate as jest.Mock).mockReturnValueOnce(existingName).mockReturnValueOnce(newName);
@@ -228,7 +228,7 @@ describe('FileManager copy with random name conflict', () => {
     // Test 2: Le générateur produit le même nom conflictuel 10 fois.
     // Le système doit alors commencer à numéroter le nom jusqu'à en trouver un qui n'existe pas.
     // Ici, 'conflict' et 'conflict-1' existent, mais 'conflict-2' est libre.
-    it('should append a number to the name after 10 failed attempts', () => {
+    it('devrait ajouter un numéro au nom après 10 tentatives échouées', () => {
         const conflictingName = 'conflict';
         (nameGeneratorMock.generate as jest.Mock).mockReturnValue(conflictingName);
 
@@ -247,7 +247,7 @@ describe('FileManager copy with random name conflict', () => {
     });
 
     // Test 3: Cas limite où le premier nom numéroté ('conflict-1') est disponible.
-    it('should use the first available numbered name after 10 attempts', () => {
+    it('devrait utiliser le premier nom numéroté disponible après 10 tentatives', () => {
         const conflictingName = 'conflict';
         (nameGeneratorMock.generate as jest.Mock).mockReturnValue(conflictingName);
 
