@@ -1,9 +1,15 @@
 import { test, expect } from '@playwright/test';
 
-test('should list files in the managed directory', async ({ request }) => {
-  const response = await request.get('http://localhost:3000/entries');
-  const files = await response.json();
+
+test.describe('API File Explorer', () => {
   
-  // This will fail because we expect a file that doesn't exist.
-  expect(files).toContain('non_existent_file.txt');
+  test('should return entries with metadata (name and type)', async ({ request }) => {
+    const response = await request.get('http://localhost:3000/entries');
+    const body = await response.json();
+
+    expect(response.ok()).toBeTruthy();
+    // On s'attend à un objet riche, pas juste un string
+    expect(body[0]).toHaveProperty('name');
+    expect(body[0]).toHaveProperty('isDirectory');
+  });
 });
